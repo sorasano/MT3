@@ -44,7 +44,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	SetWriteZBufferFlag(TRUE);	//Zバッファへの書き込みを有効にする
 
 	//カメラ初期化
-	Vector3 cameraPosition(-20.0f, 20.0f, -120.0f);
+	Vector3 cameraPosition(0.0f, 200.0f, -1.0f);
 	Vector3 cameraTarget(0.0f, 0.0f, 0.0f);
 	Vector3 cameraUp(0.0f, 1.0f, 0.0f);
 
@@ -71,11 +71,13 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
 	//補間で使うデータ
 	//start -> end　を [s] で完了させる
-	Vector3 start(-100.0f,0,0);
-	Vector3 end(+100.0f,0,0);
-	//Vector3 p0(-100.0f, 0.0f, 0.0f);	//スタート地点
-	//Vector3 p1(0.0f, 0.0f, +100.0f);	//制御点
-	//Vector3 p2(+100.0f, 0.0f, 0.0f);	//エンド地点
+	//Vector3 start(-100.0f,0,0);
+	//Vector3 end(+100.0f,0,0);
+	Vector3 p0(-100.0f, 0.0f, 0.0f);	//スタート地点
+	Vector3 p1(-10.0f, 0.0f, +50.0f);	//制御点
+	Vector3 p2(+10.0f, 0.0f, -50.0f);	//制御点
+	Vector3 p3(+100.0f, 0.0f, 0.0f);	//エンド地点
+
 
 	float maxTime = 5.0f;		//全体時間[s]
 	float timeRate;				//何％時間が進んだか(率)
@@ -131,7 +133,16 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
 		timeRate = min(elapsedTime / maxTime, 1.0f);
 
-		position = lerp(start, end, timeRate);
+		Vector3 a = lerp(p0,p1, timeRate);
+		Vector3 b = lerp(p1, p2, timeRate);
+		Vector3 c = lerp(p2, p3, timeRate);
+
+		Vector3 d = lerp(a, b, timeRate);
+		Vector3 e = lerp(b, c, timeRate);
+
+		position = lerp(d, e, timeRate);
+
+		//position = lerp(start, end, timeRate);
 		//position = easeIn(start, end, timeRate);
 		//position = easeOut(start, end, timeRate);
 		//position = easeInOut(start, end, timeRate);
