@@ -4,15 +4,28 @@
 #include <DxLib.h>
 #include <cstring>
 
-//球の描画
-int DrawSphere3D(const Vector3& CenterPos, const float r, const int DivNum, const unsigned int DifColor, const unsigned int SpcColor, const int FillFlag);
+#include <Math.h>
 
+struct Quaternion {
+	float x;
+	float y;
+	float z;
+	float w;
 
-//円錐の描画
-int DrawCone3D(const Vector3& TopPos, const Vector3& BottomPos, const float r, const int DivNum, const unsigned int DifColor, const unsigned int SpcColor, const int FillFlag);
+};
 
-//線分の描画
-int DrawLine3D(const Vector3& Pos1, const Vector3& Pos2, const unsigned int Color);
+//Quaternionの積
+Quaternion Multiply(const Quaternion&lhs,const Quaternion& rhs);
+//単位Quaternionを返す
+Quaternion IdentityQuaternion();
+//共役Quaternionを返す
+Quaternion Cojugate(const Quaternion& quaternion);
+//Quaternionのnormを返す
+float Norm(const Quaternion& quaternion);
+//正規化したQuaternionを返す
+Quaternion Normalize(const Quaternion& quaternion);
+//逆Quaternionを返す
+Quaternion Inverse(const Quaternion& quaternion);
 
 //カメラの位置と姿勢の設定
 int SetCameraPositionAndTargetAndUpVec(
@@ -20,13 +33,6 @@ int SetCameraPositionAndTargetAndUpVec(
 	const Vector3& cameraTarget,
 	const Vector3& cameraUp
 );
-
-//モデルの座標変換用行列をセットする
-int MV1SetMatrix(const int MHAndle, const Matrix4 Matrix);
-
-//関数プロトタイプ宣言
-void DrawAxis3D(const float length);//x,y,z軸描画
-void DrawKeyOperation();//キー操作
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow) {
 
@@ -36,7 +42,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
 	ChangeWindowMode(true);							//ウィンドウモードにする
 	SetGraphMode(WindowWidth, WindowHeight, 32);	//画面モードのセット
-	SetBackgroundColor(0, 0, 64);			//背景色 RGB
+	SetBackgroundColor(32, 32, 64);			//背景色 RGB
 	if (DxLib_Init() == -1) return -1;		//DxLib 初期化処理
 	SetDrawScreen(DX_SCREEN_BACK);			//描画先を裏画面にセット
 
@@ -53,112 +59,28 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	SetCameraScreenCenter(WindowWidth / 2.0f, WindowHeight / 2.0f);	//画面の中心をカメラに合わせる
 	SetCameraPositionAndTargetAndUpVec(cameraPosition, cameraTarget, cameraUp);
 
-	//TCHAR buf[256] = "fighter/fighter.mqo";
-	//const char str[20] = "fighter/fighter.mqo";
-	////アプリで使用する変数
-	//int model = MV1LoadModel(buf);
-
-	//// xyz軸の回転角度
-	//const float ROT_UNIT = 0.01f;
-	//float rotX = 0.0f;
-	//float rotY = 0.0f;
-	//float rotZ = 0.0f;
-
-	//時間計測に必要なデータ
-	long long startCount = 0;
-	long long nowCount = 0;
-	long long elapsedCount = 0;
-
-	//補間で使うデータ
-	//start -> end　を [s] で完了させる
-	//Vector3 start(-100.0f,0,0);
-	//Vector3 end(+100.0f,0,0);
-	Vector3 p0(-100.0f, 0.0f, 0.0f);	//スタート地点
-	Vector3 p1(-10.0f, 0.0f, +50.0f);	//制御点
-	Vector3 p2(+10.0f, 0.0f, -50.0f);	//制御点
-	Vector3 p3(+100.0f, 0.0f, 0.0f);	//エンド地点
-
-
-	float maxTime = 5.0f;		//全体時間[s]
-	float timeRate;				//何％時間が進んだか(率)
-
-	//球の位置
-	Vector3 position;
-
-	//実行前にカウンタ値を取得
-	startCount = GetNowHiPerformanceCount();
 
 	while (ProcessMessage() == 0 && CheckHitKey(KEY_INPUT_ESCAPE) == 0) {
 
+		Quaternion q1 = {2.0f,3.0f,4.0f,1.0f};
+		Quaternion q2 = { 1.0f,3.0f,5.0f,2.0f };
 
-		////更新
-		//if (CheckHitKey(KEY_INPUT_A)) rotY += ROT_UNIT;
-		//if (CheckHitKey(KEY_INPUT_D)) rotY -= ROT_UNIT;
+		Quaternion identity = IdentityQuaternion();
+		Quaternion conj = Cojugate(q1);
+		Quaternion inv = Inverse(q1);
+		Quaternion normal = Normalize(q1);
+		Quaternion mul1 = Multiply(q1,q2);
+		Quaternion mul2 = Multiply(q2, q1);
+		float norm = Norm(q1);
 
-		//if (CheckHitKey(KEY_INPUT_W)) rotX += ROT_UNIT;
-		//if (CheckHitKey(KEY_INPUT_S)) rotX -= ROT_UNIT;
+		DrawFormatString(0, 00, GetColor(255, 255, 255), "%f %f %f %f: Identity", identity.x, identity.y, identity.z, identity.w);
+		DrawFormatString(0, 20, GetColor(255, 255, 255), "%f %f %f %f: Cojugate", conj.x, conj.y, conj.z, conj.w);
+		DrawFormatString(0, 40, GetColor(255, 255, 255), "%f %f %f %f: Inverse", inv.x, inv.y, inv.z, inv.w);
+		DrawFormatString(0, 60, GetColor(255, 255, 255), "%f %f %f %f: Normalize", normal.x, normal.y, normal.z, normal.w);
+		DrawFormatString(0, 80, GetColor(255, 255, 255), "%f %f %f %f:  Multiply(q1,q2)", mul1.x, mul1.y, mul1.z, mul1.w);
+		DrawFormatString(0, 100, GetColor(255, 255, 255), "%f %f %f %f: Multiply(q2, q1)", mul2.x, mul2.y, mul2.z, mul2.w);
+		DrawFormatString(0, 120, GetColor(255, 255, 255), "%f: Norm", norm);
 
-		//if (CheckHitKey(KEY_INPUT_E)) rotZ += ROT_UNIT;
-		//if (CheckHitKey(KEY_INPUT_Z)) rotZ -= ROT_UNIT;
-
-		////各種変換行列の計算
-		//Matrix4 matScale = scale(Vector3(5.0f, 5.0f, 5.0f));	//モデルの拡大率
-
-		//Matrix4 matRotX = rotateX(rotX);
-
-		//Matrix4 matRotY = rotateY(rotY);
-
-		//Matrix4 matRotZ = rotateZ(rotZ);
-
-		//Matrix4 matRot = matRotX * matRotY * matRotZ;
-
-		//Matrix4	matWorld = matScale * matRot;
-
-		//MV1SetMatrix(model, matWorld);
-
-		//[R]でリセット
-		if (CheckHitKey(KEY_INPUT_R)) {
-			startCount = GetNowHiPerformanceCount();
-		}
-
-		//経過時間(elapsedTime [s])の計算
-		nowCount = GetNowHiPerformanceCount();
-		elapsedCount = nowCount - startCount;
-		float elapsedTime = static_cast<float> (elapsedCount) / 1'000'000.0f;
-
-		//スタート地点			: start
-		//エンド地点			: end
-		//経過時間			: elapsedTime [s]
-		//移動官僚の率(経過時間/全体時間) : timeRate (%)
-
-		timeRate = min(elapsedTime / maxTime, 1.0f);
-
-		Vector3 a = lerp(p0,p1, timeRate);
-		Vector3 b = lerp(p1, p2, timeRate);
-		Vector3 c = lerp(p2, p3, timeRate);
-
-		Vector3 d = lerp(a, b, timeRate);
-		Vector3 e = lerp(b, c, timeRate);
-
-		position = lerp(d, e, timeRate);
-
-		//position = lerp(start, end, timeRate);
-		//position = easeIn(start, end, timeRate);
-		//position = easeOut(start, end, timeRate);
-		//position = easeInOut(start, end, timeRate);
-
-		//描画
-		ClearDrawScreen();		//画面を消去
-		DrawAxis3D(500.0f);		//xyz軸の描画
-		DrawSphere3D(position, 5.0f, 32, GetColor(255, 0, 0), GetColor(255, 255, 255), TRUE);//球の描画
-
-		DrawFormatString(0, 0, GetColor(255, 255, 255), "position (%5.1f,%5.1f,%5.1f)", position.x, position.y, position.z);
-		DrawFormatString(0, 20, GetColor(255, 255, 255), "%7.3f [s]", elapsedTime);
-		DrawFormatString(0, 40, GetColor(255, 255, 255), "[R] : Restart");
-
-
-		//MV1DrawModel(model);	//モデルの描画
-		//DrawKeyOperation();		//キー操作の描画
 
 		ScreenFlip();			//フリップする
 	}
@@ -166,53 +88,57 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	return 0;	//ソフトの終了
 }
 
-//xyz軸の描画
-void DrawAxis3D(const float length) {
-	//軸の線の描画	
-	DrawLine3D(Vector3(-length, 0, 0), Vector3(+length, 0, 0), GetColor(255, 0, 0));	//x軸
-	DrawLine3D(Vector3(0, -length, 0), Vector3(0, +length, 0), GetColor(0, 255, 0));	//y軸
-	DrawLine3D(Vector3(0, 0, -length), Vector3(0, 0, +length), GetColor(0, 0, 255));	//z軸
+Quaternion Multiply(const Quaternion& lhs, const Quaternion& rhs)
+{
+	Quaternion  multiply;
 
-	////軸の先の描画
-	//const float coneSize = 10.0f;
-	//DrawCone3D(Vector3(length, 0, 0), Vector3(length - coneSize, 0, 0), coneSize / 2, 16, GetColor(255, 0, 0), GetColor(255, 255, 255), TRUE);
-	//DrawCone3D(Vector3(0, length, 0), Vector3(0, length - coneSize, 0), coneSize / 2, 16, GetColor(0, 255, 0), GetColor(255, 255, 255), TRUE);
-	//DrawCone3D(Vector3(0, 0, length), Vector3(0, 0, length - coneSize), coneSize / 2, 16, GetColor(0, 0, 255), GetColor(255, 255, 255), TRUE);
+	multiply.x = lhs.y * rhs.z - lhs.z * rhs.y + rhs.w * lhs.x + lhs.w * rhs.x;
+	multiply.y = lhs.z * rhs.x - lhs.x * rhs.z + rhs.w * lhs.y + lhs.w * rhs.y;
+	multiply.z = lhs.x * rhs.y - lhs.y * rhs.x + rhs.w * lhs.z + lhs.w * rhs.z;
+	multiply.w = lhs.w * rhs.w - lhs.x * rhs.x - rhs.y * lhs.y - lhs.z * rhs.z;
 
+	return multiply;
 }
 
-//キー操作の描画
-void DrawKeyOperation() {
-	const unsigned white = GetColor(255, 255, 255);
+Quaternion IdentityQuaternion()
+{
+	Quaternion identity = { 0.0f,0.0f,0.0f,1.0f };
 
-	//DrawFormatString(10, 20 * 1, white, "  [W][E][R]  R : リセット");
-	//DrawFormatString(10, 20 * 2, white, "[A][S][D]    AD: y軸回りの回転");
-	//DrawFormatString(10, 20 * 3, white, " [Z]         WS: x軸回りの回転");
-	//DrawFormatString(10, 20 * 4, white, "             EZ: z軸回りの回転");
-
+	return identity;
 }
 
-//球の描画
-int DrawSphere3D(const Vector3& CenterPos, const float r, const int DivNum, const unsigned int DifColor, const unsigned int SpcColor, const int FillFlag) {
-	VECTOR centerPos = { CenterPos.x, CenterPos.y, CenterPos.z };
-	return DrawSphere3D(centerPos, r, DivNum, DifColor, SpcColor, FillFlag);
+Quaternion Cojugate(const Quaternion& quaternion)
+{
+	Quaternion cojugate = {-quaternion.x, -quaternion.y,-quaternion.z,quaternion.w };
+
+	return cojugate;
 }
 
+float Norm(const Quaternion& quaternion)
+{
+	float norm = sqrt((quaternion.x * quaternion.x)+ (quaternion.y * quaternion.y) + (quaternion.z * quaternion.z) + (quaternion.w * quaternion.w));
 
-//円錐の描画
-int DrawCone3D(const Vector3& TopPos, const Vector3& BottomPos, const float r, const int DivNum, const unsigned int DifColor, const unsigned int SpcColor, const int FillFlag) {
-	VECTOR topPos = { TopPos.x,TopPos.y ,TopPos.z };
-	VECTOR bottomPos = { BottomPos.x,BottomPos.y,BottomPos.z };
-
-	return DrawCone3D(topPos, bottomPos, r, DivNum, DifColor, SpcColor, FillFlag);
+	return norm;
 }
 
-//線分の描画
-int DrawLine3D(const Vector3& Pos1, const Vector3& Pos2, const unsigned int Color) {
-	VECTOR p1 = { Pos1.x,Pos1.y,Pos1.z };
-	VECTOR p2 = { Pos2.x,Pos2.y,Pos2.z };
+Quaternion Normalize(const Quaternion& quaternion)
+{
 
-	return DrawLine3D(p1, p2, Color);
+	float norm = Norm(quaternion);
+
+	Quaternion normalize = { quaternion.x / norm,quaternion.y / norm,quaternion.z / norm,quaternion.w / norm};
+
+	return normalize;
+}
+
+Quaternion Inverse(const Quaternion& quaternion)
+{
+	float norm = Norm(quaternion);
+	Quaternion cojugate = Cojugate(quaternion);
+
+	Quaternion inverse = { cojugate.x / (norm * norm), cojugate.y / (norm * norm), cojugate.z / (norm * norm), cojugate.w / (norm * norm )};
+
+	return inverse;
 }
 
 //カメラの位置と姿勢の設定
@@ -226,12 +152,4 @@ int SetCameraPositionAndTargetAndUpVec(
 	VECTOR up = { cameraUp.x,cameraUp.y,cameraUp.z };
 
 	return SetCameraPositionAndTargetAndUpVec(position, target, up);
-}
-
-//モデルの座標変換用行列をセットする
-int MV1SetMatrix(const int MHandle, const Matrix4 Matrix) {
-	MATRIX matrix;
-	std::memcpy(&matrix, &Matrix, sizeof MATRIX);		//メモリ間コピー
-
-	return MV1SetMatrix(MHandle, matrix);
 }
