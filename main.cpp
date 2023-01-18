@@ -3,6 +3,7 @@
 
 #include <DxLib.h>
 #include <cstring>
+#include <vector>
 
 //球の描画
 int DrawSphere3D(const Vector3& CenterPos, const float r, const int DivNum, const unsigned int DifColor, const unsigned int SpcColor, const int FillFlag);
@@ -28,6 +29,9 @@ int MV1SetMatrix(const int MHAndle, const Matrix4 Matrix);
 void DrawAxis3D(const float length);//x,y,z軸描画
 void DrawKeyOperation();//キー操作
 
+//制御店の集合(vectorコンテナ)、補間する区間の添え字、時間経過率
+Vector3 splinePosition(const std::vector<Vector3>& points, size_t startIndex, float t);
+
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow) {
 
 	//DxLib 初期化
@@ -44,7 +48,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	SetWriteZBufferFlag(TRUE);	//Zバッファへの書き込みを有効にする
 
 	//カメラ初期化
-	Vector3 cameraPosition(0.0f, 200.0f, -1.0f);
+	Vector3 cameraPosition(-20.0f, 20.0f, -200.0f);
 	Vector3 cameraTarget(0.0f, 0.0f, 0.0f);
 	Vector3 cameraUp(0.0f, 1.0f, 0.0f);
 
@@ -73,11 +77,15 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	//start -> end　を [s] で完了させる
 	//Vector3 start(-100.0f,0,0);
 	//Vector3 end(+100.0f,0,0);
-	Vector3 p0(-100.0f, 0.0f, 0.0f);	//スタート地点
-	Vector3 p1(-10.0f, 0.0f, +50.0f);	//制御点
-	Vector3 p2(+10.0f, 0.0f, -50.0f);	//制御点
-	Vector3 p3(+100.0f, 0.0f, 0.0f);	//エンド地点
+	Vector3 start(-100.0f, 0.0f, 0.0f);	//スタート地点
+	Vector3 p2(-50.0f, 50.0f, +50.0f);	//制御点
+	Vector3 p3(+50.0f, -30.0f, -50.0f);	//制御点
+	Vector3 end(+100.0f, 0.0f, 0.0f);	//エンド地点
 
+	std::vector<Vector3> points{ start,start,p2,p3,end,end };
+
+	//p1からスタートする
+	size_t startIndex = 1;
 
 	float maxTime = 5.0f;		//全体時間[s]
 	float timeRate;				//何％時間が進んだか(率)
@@ -119,6 +127,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		//[R]でリセット
 		if (CheckHitKey(KEY_INPUT_R)) {
 			startCount = GetNowHiPerformanceCount();
+			startIndex = 1;
 		}
 
 		//経過時間(elapsedTime [s])の計算
@@ -131,16 +140,30 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		//経過時間			: elapsedTime [s]
 		//移動官僚の率(経過時間/全体時間) : timeRate (%)
 
-		timeRate = min(elapsedTime / maxTime, 1.0f);
+		timeRate = elapsedTime / maxTime;
+		/*	timeRate = min(elapsedTime / maxTime, 1.0f);*/
 
-		Vector3 a = lerp(p0,p1, timeRate);
-		Vector3 b = lerp(p1, p2, timeRate);
-		Vector3 c = lerp(p2, p3, timeRate);
+		if (timeRate >= 1.0f) {
+			if (startIndex < points.size() - 3) {
+				startIndex++;
+				timeRate -= -1.0f;
+				startCount = GetNowHiPerformanceCount();
+			}
+			else {
+				timeRate = 1.0f;
+			}
+		}
 
-		Vector3 d = lerp(a, b, timeRate);
-		Vector3 e = lerp(b, c, timeRate);
+		position = splinePosition(points, startIndex, timeRate);
 
-		position = lerp(d, e, timeRate);
+		//Vector3 a = lerp(p0,p1, timeRate);
+		//Vector3 b = lerp(p1, p2, timeRate);
+		//Vector3 c = lerp(p2, p3, timeRate);
+
+		//Vector3 d = lerp(a, b, timeRate);
+		//Vector3 e = lerp(b, c, timeRate);
+
+		//position = lerp(d, e, timeRate);
 
 		//position = lerp(start, end, timeRate);
 		//position = easeIn(start, end, timeRate);
@@ -150,7 +173,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		//描画
 		ClearDrawScreen();		//画面を消去
 		DrawAxis3D(500.0f);		//xyz軸の描画
-		DrawSphere3D(position, 5.0f, 32, GetColor(255, 0, 0), GetColor(255, 255, 255), TRUE);//球の描画
+
+		DrawSphere3D(start, 2.0f, 32, GetColor(0,255,  0), GetColor(255, 255, 255), TRUE);//球の描画
+		DrawSphere3D(p2, 2.0f, 32, GetColor(0,255,  0), GetColor(255, 255, 255), TRUE);//球の描画
+		DrawSphere3D(p3, 2.0f, 32, GetColor(0,255, 0), GetColor(255, 255, 255), TRUE);//球の描画
+		DrawSphere3D(end, 2.0f, 32, GetColor(0,255,  0), GetColor(255, 255, 255), TRUE);//球の描画
+
+		DrawSphere3D(position, 2.0f, 32, GetColor(255, 0, 0), GetColor(255, 255, 255), TRUE);//球の描画
+
 
 		DrawFormatString(0, 0, GetColor(255, 255, 255), "position (%5.1f,%5.1f,%5.1f)", position.x, position.y, position.z);
 		DrawFormatString(0, 20, GetColor(255, 255, 255), "%7.3f [s]", elapsedTime);
@@ -234,4 +264,23 @@ int MV1SetMatrix(const int MHandle, const Matrix4 Matrix) {
 	std::memcpy(&matrix, &Matrix, sizeof MATRIX);		//メモリ間コピー
 
 	return MV1SetMatrix(MHandle, matrix);
+}
+
+//制御店の集合(vectorコンテナ)、補間する区間の添え字、時間経過率
+Vector3 splinePosition(const std::vector<Vector3>& points, size_t startIndex, float t) {
+
+	//補間すべき点の数
+	size_t n = points.size() - 2;
+
+	if (startIndex > n)return points[n];
+	if (startIndex < 1)return points[1];
+
+	Vector3 p0 = points[startIndex - 1];
+	Vector3 p1 = points[startIndex];
+	Vector3 p2 = points[startIndex + 1];
+	Vector3 p3 = points[startIndex + 2];
+
+	Vector3 position = 0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * (t * t) + (-p0 + 3 * p1 - 3 * p2 + p3) * (t * t * t));
+
+	return position;
 }
