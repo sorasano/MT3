@@ -38,6 +38,9 @@ Matrix4 MakeRotateMatrix(const Quaternion& quaternion);
 //ベクトルをアフィン変換する
 Vector3 TransformAffine(const Vector3& vector, const Matrix4& matrix);
 
+//球面線形補間
+Quaternion slerp(const Quaternion& q0, const Quaternion& q1, float t);
+
 //カメラの位置と姿勢の設定
 int SetCameraPositionAndTargetAndUpVec(
 	const Vector3& cameraPosition,
@@ -92,14 +95,30 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		//DrawFormatString(0, 100, GetColor(255, 255, 255), "%f %f %f %f: Multiply(q2, q1)", mul2.x, mul2.y, mul2.z, mul2.w);
 		//DrawFormatString(0, 120, GetColor(255, 255, 255), "%f: Norm", norm);
 
-		Quaternion rotation = MakeAxisAngle({ 0.0f,0.0f,1.0f }, 3.141592f / 2.0f);
-		Vector3 pointY = { 0.0f,1.0f,0.0f };
-		Matrix4 rotateMatrix = MakeRotateMatrix(rotation);
-		Vector3 rotateByQuaternion = RotateVector(pointY, rotation);
-		Vector3 rotateByMatrix = TransformAffine(pointY, rotateMatrix);
+		//Quaternion rotation = MakeAxisAngle({ 0.0f,0.0f,1.0f }, 3.141592f / 2.0f);
+		//Vector3 pointY = { 0.0f,1.0f,0.0f };
+		//Matrix4 rotateMatrix = MakeRotateMatrix(rotation);
+		//Vector3 rotateByQuaternion = RotateVector(pointY, rotation);
+		//Vector3 rotateByMatrix = TransformAffine(pointY, rotateMatrix);
 
-		DrawFormatString(0, 00, GetColor(255, 255, 255), "%f %f %f : rotateByQuaternion", rotateByQuaternion.x, rotateByQuaternion.y, rotateByQuaternion.z);
-		DrawFormatString(0, 20, GetColor(255, 255, 255), "%f %f %f : rotateByMatrix", rotateByMatrix.x, rotateByMatrix.y, rotateByMatrix.z);
+		//DrawFormatString(0, 00, GetColor(255, 255, 255), "%f %f %f : rotateByQuaternion", rotateByQuaternion.x, rotateByQuaternion.y, rotateByQuaternion.z);
+		//DrawFormatString(0, 20, GetColor(255, 255, 255), "%f %f %f : rotateByMatrix", rotateByMatrix.x, rotateByMatrix.y, rotateByMatrix.z);
+
+		Quaternion rotation0 = MakeAxisAngle({ 0.71f,0.71f,0.0f }, 0.3f);
+		Quaternion rotation1 = MakeAxisAngle({ 0.71f,0.0f,0.71f }, 3.141592f);
+
+		Quaternion interplate0 = slerp(rotation0, rotation1, 0.0f);
+		Quaternion interplate1 = slerp(rotation0, rotation1, 0.3f);
+		Quaternion interplate2 = slerp(rotation0, rotation1, 0.5f);
+		Quaternion interplate3 = slerp(rotation0, rotation1, 0.7f);
+		Quaternion interplate4 = slerp(rotation0, rotation1, 1.0f);
+
+		DrawFormatString(0, 00, GetColor(255, 255, 255), "%.2f %.2f %.2f %.2f: interplate0 ,sleap(q0,q1,0.0f) ", interplate0.x, interplate0.y, interplate0.z, interplate0.w);
+		DrawFormatString(0, 20, GetColor(255, 255, 255), "%.2f %.2f %.2f %.2f: interplate1 ,sleap(q0,q1,0.3f) ", interplate1.x, interplate1.y, interplate1.z, interplate1.w);
+		DrawFormatString(0, 40, GetColor(255, 255, 255), "%.2f %.2f %.2f %.2f: interplate2 ,sleap(q0,q1,0.5f) ", interplate2.x, interplate2.y, interplate2.z, interplate2.w);
+		DrawFormatString(0, 60, GetColor(255, 255, 255), "%.2f %.2f %.2f %.2f: interplate3 ,sleap(q0,q1,0.7f) ", interplate3.x, interplate3.y, interplate3.z, interplate3.w);
+		DrawFormatString(0, 80, GetColor(255, 255, 255), "%.2f %.2f %.2f %.2f: interplate4 ,sleap(q0,q1,1.0f) ", interplate4.x, interplate4.y, interplate4.z, interplate4.w);
+
 
 
 
@@ -219,7 +238,7 @@ Matrix4 MakeRotateMatrix(const Quaternion& quaternion)
 	float xw = quaternion.x * quaternion.w * 2.0f;
 	float yw = quaternion.y * quaternion.w * 2.0f;
 	float zw = quaternion.z * quaternion.w * 2.0f;
-	
+
 	m.m[0][0] = 1.0f - yy - zz;
 	m.m[0][1] = xy + zw;
 	m.m[0][2] = zx - yw;
@@ -238,9 +257,47 @@ Matrix4 MakeRotateMatrix(const Quaternion& quaternion)
 
 Vector3 TransformAffine(const Vector3& vector, const Matrix4& matrix)
 {
-	Vector3 vec = { matrix .m[1][0],matrix.m[1][2] ,matrix.m[1][3] };
+	Vector3 vec = { matrix.m[1][0],matrix.m[1][2] ,matrix.m[1][3] };
 
 	return vec;
+}
+
+Quaternion slerp(const Quaternion& q0, const Quaternion& q1, float t)
+{
+
+	//q1 と q2 の内積
+	float dot = (q0.x * q1.x) + (q0.y * q1.y) + (q0.z * q1.z) + (q0.w * q1.w);
+
+	//内積反転
+	if (dot < 0) {
+		//q0 = -q0;
+		dot = -dot;
+	}
+
+	//なす角を求める
+	float theta = acos(dot);
+
+	//thetaとsinを使って補間係数scale0,scale1を求める
+
+	float scale0, scale1, st, sut, sout;
+
+	st = (float)sin(theta);
+	sut = (float)sin(t * theta);
+	sout = (float)sin((1 - t) * theta);
+
+	scale0 = sout / st;
+	scale1 = sut / st;
+
+	//それぞれの補間関数を利用して補間後のQuaternionを求める
+
+	Quaternion q;
+
+	q.x = scale0 * q0.x + scale1 * q1.x;
+	q.y = scale0 * q0.y + scale1 * q1.y;
+	q.z = scale0 * q0.z + scale1 * q1.z;
+	q.w = scale0 * q0.w + scale1 * q1.w;
+
+	return q;
 }
 
 //カメラの位置と姿勢の設定
