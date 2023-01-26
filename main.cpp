@@ -105,7 +105,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		//DrawFormatString(0, 20, GetColor(255, 255, 255), "%f %f %f : rotateByMatrix", rotateByMatrix.x, rotateByMatrix.y, rotateByMatrix.z);
 
 		Quaternion rotation0 = MakeAxisAngle({ 0.71f,0.71f,0.0f }, 0.3f);
-		Quaternion rotation1 = MakeAxisAngle({ 0.71f,0.0f,0.71f }, 3.141592f);
+		Quaternion rotation1 = { -rotation0.x,-rotation0.y,-rotation0.z,-rotation0.w };
 
 		Quaternion interplate0 = slerp(rotation0, rotation1, 0.0f);
 		Quaternion interplate1 = slerp(rotation0, rotation1, 0.3f);
@@ -269,8 +269,16 @@ Quaternion slerp(const Quaternion& q0, const Quaternion& q1, float t)
 	float dot = (q0.x * q1.x) + (q0.y * q1.y) + (q0.z * q1.z) + (q0.w * q1.w);
 
 	//内積反転
+	
+	//q0 のマイナス用
+	Quaternion mq0 = q0;
 	if (dot < 0) {
-		//q0 = -q0;
+
+		mq0.x = -q0.x;
+		mq0.y = -q0.y;
+		mq0.z = -q0.z;
+		mq0.w = -q0.w;
+
 		dot = -dot;
 	}
 
@@ -291,6 +299,16 @@ Quaternion slerp(const Quaternion& q0, const Quaternion& q1, float t)
 	//それぞれの補間関数を利用して補間後のQuaternionを求める
 
 	Quaternion q;
+
+	if (dot >= 1.0f -0.0005) {
+
+		q.x = (1.0f - t) * mq0.x + t * q1.x;
+		q.y = (1.0f - t) * mq0.y + t * q1.y;
+		q.z = (1.0f - t) * mq0.z + t * q1.z;
+		q.w = (1.0f - t) * mq0.w + t * q1.w;
+
+		return q;
+	}
 
 	q.x = scale0 * q0.x + scale1 * q1.x;
 	q.y = scale0 * q0.y + scale1 * q1.y;
